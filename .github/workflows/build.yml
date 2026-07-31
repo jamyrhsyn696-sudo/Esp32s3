@@ -1,26 +1,32 @@
-name: Build ESP32-S3 Binary
+name: Build ESP32-S3
 
-on:
-  push:
-    branches: [ main ]
-  workflow_dispatch:
+on: [push, workflow_dispatch]
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: espressif/arduino-esp32@v1
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Arduino CLI
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | sh
+          sudo mv bin/arduino-cli /usr/local/bin/
+
+      - name: Install ESP32 core
+        run: |
+          arduino-cli core update-index
+          arduino-cli core install esp32:esp32@3.0.0
+
+      - name: Compile Sketch
+        run: |
+          arduino-cli compile --fqbn esp32:esp32:esp32s3 ./YourSketchFolder/YourSketch.ino
+
+      - name: Upload Binary Artifact
+        uses: actions/upload-artifact@v4
         with:
-          board: esp32-s3-devkitc-1
-      - run: |
-          # اگر با Arduino هستید
-          arduino-cli compile --fqbn esp32:esp32:esp32s3 ./YourSketch
-          # اگر با ESP-IDF هستید
-          # idf.py build
-      - uses: actions/upload-artifact@v4
-        with:
-          name: firmware-bin
+          name: firmware
           path: |
             *.bin
-            build/*.bin
+            **/*.bin
