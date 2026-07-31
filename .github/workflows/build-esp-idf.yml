@@ -1,0 +1,52 @@
+name: Build ESP-IDF (ESP32-S3)
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      IDF_TARGET: esp32s3
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Setup ESP-IDF
+        uses: espressif/setup-esp-idf@v2
+        with:
+          idf-version: 'v5.1'
+
+      - name: Install Python requirements (if any)
+        run: |
+          if [ -f requirements.txt ]; then
+            python -m pip install --upgrade pip
+            python -m pip install -r requirements.txt
+          else
+            echo "No requirements.txt, skipping"
+          fi
+
+      - name: Build project
+        run: |
+          idf.py fullclean || true
+          idf.py build
+
+      - name: List build output
+        run: ls -la build || true
+
+      - name: Upload bin artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: esp32s3-binaries
+          path: |
+            build/*.bin
+            build/*.elf
+            build/*.hex
+            build/*.map
