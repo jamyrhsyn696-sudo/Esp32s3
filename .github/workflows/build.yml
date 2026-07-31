@@ -1,32 +1,35 @@
-name: Build ESP32-S3
+- name: Setup Python
+  uses: actions/setup-python@v4
+  with:
+    python-version: '3.11'
 
-on: [push, workflow_dispatch]
+- name: Setup ESP-IDF
+  uses: espressif/setup-esp-idf@v2
+  with:
+    idf-version: 'v5.1' # در صورت نیاز نسخه دیگر را بگویید
 
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+- name: Install Python requirements (if any)
+  if: files.exists('requirements.txt') || always()
+  run: |
+    if [ -f requirements.txt ]; then
+      python -m pip install --upgrade pip
+      python -m pip install -r requirements.txt
+    fi
 
-      - name: Install Arduino CLI
-        run: |
-          curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | sh
-          sudo mv bin/arduino-cli /usr/local/bin/
+- name: Build project
+  run: |
+    idf.py fullclean || true
+    idf.py build
 
-      - name: Install ESP32 core
-        run: |
-          arduino-cli core update-index
-          arduino-cli core install esp32:esp32@3.0.0
+- name: List build output
+  run: ls -la build || true
 
-      - name: Compile Sketch
-        run: |
-          arduino-cli compile --fqbn esp32:esp32:esp32s3 ./YourSketchFolder/YourSketch.ino
-
-      - name: Upload Binary Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: firmware
-          path: |
-            *.bin
-            **/*.bin
+- name: Upload bin artifacts
+  uses: actions/upload-artifact@v4
+  with:
+    name: esp32s3-binaries
+    path: |
+      build/*.bin
+      build/*.elf
+      build/*.hex
+      build/*.map
